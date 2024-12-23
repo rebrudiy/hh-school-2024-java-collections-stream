@@ -21,73 +21,70 @@ P.P.S Здесь ваши правки необходимо прокоммент
  */
 public class Task9 {
 
-  private long count;
-
   // Костыль, эластик всегда выдает в топе "фальшивую персону".
   // Конвертируем начиная со второй
+  //Тут я использовал skip вместо remove, потому что remove модифицирует исходный текст
   public List<String> getNames(List<Person> persons) {
-    if (persons.size() == 0) {
+    if (persons.isEmpty()) {
       return Collections.emptyList();
     }
-    persons.remove(0);
-    return persons.stream().map(Person::firstName).collect(Collectors.toList());
+    return persons.stream()
+            .skip(1) // Пропускаем первую персону
+            .map(Person::firstName)
+            .collect(Collectors.toList());
   }
+
 
   // Зачем-то нужны различные имена этих же персон (без учета фальшивой разумеется)
+  // Ничего не сказано про порядок поэтому просто переведем список фамилий в hash_list
   public Set<String> getDifferentNames(List<Person> persons) {
-    return getNames(persons).stream().distinct().collect(Collectors.toSet());
+    return new HashSet<>(getNames(persons));
   }
 
+
   // Тут фронтовая логика, делаем за них работу - склеиваем ФИО
+  //Так как сначало нам нужно secondName потом firstName, потом middleName (так же нужно учесть что какие-то поля могут быть равны null)
   public String convertPersonToString(Person person) {
-    String result = "";
-    if (person.secondName() != null) {
-      result += person.secondName();
-    }
-
-    if (person.firstName() != null) {
-      result += " " + person.firstName();
-    }
-
-    if (person.secondName() != null) {
-      result += " " + person.secondName();
-    }
-    return result;
+    List<String> fullName = new ArrayList<>();
+    if (person.secondName() != null) fullName.add(person.secondName());
+    if (person.firstName() != null) fullName.add(person.firstName());
+    if (person.middleName() != null) fullName.add(person.middleName());
+    return String.join(" ", fullName);
   }
 
   // словарь id персоны -> ее имя
+  // тут непонятно зачем нужен if, ибо его отсутствие на логику работы никак. И еще у нас для каждой персоны нужна ячейка в map(если нет кучи персон с id null)
+  // Поэтому выделим в словарь сразу persons.size() памяти
   public Map<Integer, String> getPersonNames(Collection<Person> persons) {
-    Map<Integer, String> map = new HashMap<>(1);
+    Map<Integer, String> map = new HashMap<>(persons.size());
     for (Person person : persons) {
-      if (!map.containsKey(person.id())) {
         map.put(person.id(), convertPersonToString(person));
-      }
     }
     return map;
   }
 
   // есть ли совпадающие в двух коллекциях персоны?
+  //тут просто оптимизируем с точки зрения асимптотики теперь вместо квадратичной асимптотики у нас линейная
   public boolean hasSamePersons(Collection<Person> persons1, Collection<Person> persons2) {
-    boolean has = false;
-    for (Person person1 : persons1) {
-      for (Person person2 : persons2) {
-        if (person1.equals(person2)) {
-          has = true;
-        }
+    Set<Person> set1 = new HashSet<>(persons1);
+    for(Person person : persons2) {
+      if (!set1.contains(person)) {
+        return true;
       }
     }
-    return has;
+    return false;
   }
 
   // Посчитать число четных чисел
+  //удаляем ненужные переменные и сразу возращаем результат
   public long countEven(Stream<Integer> numbers) {
-    count = 0;
-    numbers.filter(num -> num % 2 == 0).forEach(num -> count++);
-    return count;
+    return numbers.filter(num -> num % 2 == 0).count();
   }
 
   // Загадка - объясните почему assert тут всегда верен
   // Пояснение в чем соль - мы перетасовали числа, обернули в HashSet, а toString() у него вернул их в сортированном порядке
+  // может быть тут дело в реализации hash функции так у нас в качестве ключа используется натуральное число похоже выполняется свойство
+  // a < b -> hash(a) < hash(b) Видимо поэтому каждый раз у нас в итоге получается отсортированная строка из set
   void listVsSet() {
     List<Integer> integers = IntStream.rangeClosed(1, 10000).boxed().collect(Collectors.toList());
     List<Integer> snapshot = new ArrayList<>(integers);
